@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Gantt Chart Input</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script>
+
+
+
+        function syncWithPreviousOrder(button) {
+            const currentForm = button.closest("form");
+            const allEntries = Array.from(document.querySelectorAll("form[action='/save_start_times']"));
+
+            const currentIndex = allEntries.indexOf(currentForm);
+            if (currentIndex <= 0) {
+                alert("❌ No previous order to sync from.");
+                return;
+            }
+
+            const prevForm = allEntries[currentIndex - 1];
+
+            // Check if previous form has valid start times
+            const prevStartInputs = prevForm.querySelectorAll("input[name^='start_']");
+            const currentInputs = currentForm.querySelectorAll("input[name^='start_']");
+
+            let prevValid = true;
+            const prevTimes = [];
+
+            prevStartInputs.forEach((input, i) => {
+                if (!input.value) {
+                    prevValid = false;
+                }
+                prevTimes.push(input.value);
+            });
+
+            if (!prevValid) {
+                alert("❌ Previous order doesn't have all timings set.");
+                return;
+            }
+
+            const durations = [];
+            const durationElems = currentForm.querySelectorAll(".duration-value");
+            durationElems.forEach(el => {
+                const hrs = parseFloat(el.innerText.replace("Duration:", "").replace("hr", "").trim());
+                durations.push(isNaN(hrs) ? 0 : hrs);
+            });
+
+            // Compute new start times
+            const newTimes = [];
+            for (let i = 0; i < 11; i++) {
+                const prevStart = new Date(prevTimes[i].replace(/(\d{2})-(\d{2})-(\d{4})/, '$2/$1/$3'));
+                const durationMs = durations[i] * 60 * 60 * 1000;
+                const newStart = new Date(prevStart.getTime() + durationMs);
+
+                // Format back to dd-mm-yyyy hh:mm:ss
+                const dd = String(newStart.getDate()).padStart(2, '0');
+                const mm = String(newStart.getMonth() + 1).padStart(2, '0');
+                const yyyy = newStart.getFullYear();
+                const hh = String(newStart.getHours()).padStart(2, '0');
+                const min = String(newStart.getMinutes()).padStart(2, '0');
+                const ss = String(newStart.getSeconds()).padStart(2, '0');
+
+                newTimes.push(`${dd}-${mm}-${yyyy} ${hh}:${min}:${ss}`);
+            }
+
+            // Fill manufacturing date and all start time inputs
+            const manufacturingInput = currentForm.querySelector("input[name='manufacturing_date']");
+            manufacturingInput.value = newTimes[0];  // First machine timing
+
+            const startInputs = currentForm.querySelectorAll("input[name^='start_']");
+            startInputs.forEach((input, i) => {
+                input.value = newTimes[i];
+            });
+
+            alert("✅ Synced timings from previous order.");
+        }
+
+        function enableEditing(btn) {
+            const form = btn.closest("form");
+
+            // Enable machine time inputs
+            const startInputs = form.querySelectorAll(".start-input");
+            const startDisplays = form.querySelectorAll(".start-display");
+
+            startInputs.forEach(input => {
+                input.classList.remove("hidden");
+                input.required = true;
+            });
+
+            startDisplays.forEach(display => display.remove());
+
+            // Toggle manufacturing date input/display
+            const manuInput = form.querySelector(".manufacturing-input");
+            const manuDisplay = form.querySelector(".manufacturing-display");
+
+            if (manuDisplay) manuDisplay.classList.add("hidden");
+            if (manuInput) {
+                manuInput.classList.remove("hidden");
+                manuInput.required = true;
+            }
+
+            btn.remove();
+        }
+
+        function validateDateTime(input) {
+            const pattern = /^(0[1-9]|[12][0-9]|3[01])-(0[1-9]|1[0-2])-\d{4} (0[0-9]|1[0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])$/;
+            if (!pattern.test(input.value)) {
+                input.setCustomValidity('Please use dd-mm-yyyy hh:mm:ss format (e.g., 25-12-2023 14:30:00)');
+                input.reportValidity();
+            } else {
+                input.setCustomValidity('');
+            }
+        }
+
+        function setupValidation() {
+            const inputs = document.querySelectorAll('input[type="datetime"]');
+            inputs.forEach(input => {
+                input.addEventListener('change', () => validateDateTime(input));
+                input.addEventListener('input', () => validateDateTime(input));
+            });
+        }
+
+        function calculateDefaultTimes(button) {
+            const form = button.closest("form");
+
+            const manufacturingDateInput = form.querySelector('input[name="manufacturing_date"]');
+            if (!manufacturingDateInput.value) {
+                alert('Please enter Manufacturing Date first');
+                return;
+            }
+
+            const [datePart, timePart] = manufacturingDateInput.value.split(' ');
+            const [day, month, year] = datePart.split('-').map(Number);
+            const [hours, minutes, seconds] = timePart.split(':').map(Number);
+
+            let currentDate = new Date(year, month - 1, day, hours, minutes, seconds);
+
+            const durationElements = form.querySelectorAll('.duration-value');
+            const durations = Array.from(durationElements).map(el => {
+                const text = el.textContent;
+                return parseFloat(text.match(/(\d+\.?\d*)/)[0]);
+            });
+
+            const startTimeInputs = form.querySelectorAll('input[name^="start_"]');
+
+            startTimeInputs.forEach((input, index) => {
+                const formattedDate = formatDate(currentDate);
+                input.value = formattedDate;
+
+                if (index < durations.length) {
+                    const durationInMs = durations[index] * 3600 * 1000;
+                    currentDate = new Date(currentDate.getTime() + durationInMs);
+                }
+            });
+        }
+
+        function formatDate(date) {
+            const pad = num => num.toString().padStart(2, '0');
+            return `${pad(date.getDate())}-${pad(date.getMonth() + 1)}-${date.getFullYear()} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+        }
+
+        function validateAllDates(form) {
+            let allValid = true;
+            const inputs = form.querySelectorAll('input[type="datetime"]');
+
+            inputs.forEach(input => {
+                validateDateTime(input);
+                if (input.validationMessage) {
+                    allValid = false;
+                }
+            });
+
+            if (!allValid) {
+                alert('Please correct all date fields to use dd-mm-yyyy hh:mm:ss format');
+            }
+
+    return allValid;
+}
+
+        document.addEventListener('DOMContentLoaded', setupValidation);
+    </script>
+</head>
+<body class="bg-gray-50 p-8">
+    <h2 class="text-2xl font-bold text-gray-800 mb-6">📊 Gantt Chart: Enter Start Times</h2>
+
+    {% for entry in gantt_rows %}
+        <div class="bg-white rounded-xl shadow p-6 mb-8">
+            <h3 class="text-lg font-semibold text-blue-700">{{ entry.company }}</h3>
+            <p class="text-sm text-gray-500 mb-4">Order Date: {{ entry.order_date }}</p>
+
+            <form method="post" action="/save_start_times" onsubmit="return validateAllDates(this)">
+                <input type="hidden" name="company_name" value="{{ entry.company }}">
+
+            <!-- Manufacturing Date Display/Input -->
+            <div class="mb-6 p-4 bg-gray-100 rounded-lg">
+                <label class="block text-gray-700 font-medium mb-2">Manufacturing Date</label>
+            
+                <input type="text"
+                       name="manufacturing_date"
+                       value="{{ entry.manufacturing_date if entry.manufacturing_date else '' }}"
+                       placeholder="dd-mm-yyyy hh:mm:ss"
+                       pattern="^(0[1-9]|[12][0-9]|3[01])-(0[0-9]|1[0-2])-\d{4} (0[0-9]|1[0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])$"
+                       class="manufacturing-input w-full px-3 py-2 border border-gray-300 rounded {% if entry.start_times[0] %}hidden{% endif %}"
+                       {% if not entry.start_times[0] %}required{% endif %} />
+            
+                {% if entry.start_times[0] %}
+                    <p class="manufacturing-display text-gray-800 text-sm">{{ entry.manufacturing_date }}</p>
+                {% endif %}
+            
+                <p class="text-xs text-gray-500 mt-1">Format: dd-mm-yyyy hh:mm:ss</p>
+            </div>
+
+                <div class="grid grid-cols-3 gap-4">
+                    {% for i in range(11) %}
+                        <div>
+                            <label class="block text-gray-600 font font-medium mb-1">{{ entry.machine_names[i] }}</label>
+
+                            {% if entry.start_times[i] %}
+                                <!-- Already has value: show display, hide input -->
+                                <p class="text-sm text-gray-800 start-display">{{ entry.start_times[i] }}</p>
+                                <input type="datetime"
+                                       name="start_{{ i }}"
+                                       value="{{ entry.start_times[i] }}"
+                                       class="hidden w-full px-3 py-1 border border-gray-300 rounded start-input"
+                                       pattern="^(0[1-9]|[12][0-9]|3[01])-(0[0-9]|1[0-2])-\d{4} (0[0-9]|1[0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])$">
+                            {% else %}
+                                <!-- No value: show input -->
+                                <input type="datetime"
+                                       name="start_{{ i }}"
+                                       value=""
+                                       placeholder="dd-mm-yyyy hh:mm:ss"
+                                       class="w-full px-3 py-1 border border-gray-300 rounded start-input"
+                                       required
+                                       pattern="^(0[1-9]|[12][0-9]|3[01])-(0[0-9]|1[0-2])-\d{4} (0[0-9]|1[0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])$">
+                            {% endif %}
+
+                            <p class="text-xs text-gray-400 duration-value">Duration: {{ entry.durations[i] }} hr</p>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                {% if entry.start_times[0] %}
+                    <button type="button" onclick="enableEditing(this)"
+                            class="mt-4 bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600">
+                        ✏️ Edit Timings
+                    </button>
+                {% endif %}
+
+                <div class="mt-4 flex gap-4">
+                    <button type="button" onclick="syncWithPreviousOrder(this)"
+                            class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700">
+                        🔄 Sync with Previous Order
+                    </button>
+                    <button type="button" onclick="calculateDefaultTimes(this)"
+                            class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                        ⚙️ Calculate Default Times
+                    </button>
+                    <button type="submit"
+                            class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                        ✅ Save Start Times
+                    </button>
+                </div>
+            </form>
+        </div>
+    {% endfor %}
+</body>
+</html>
