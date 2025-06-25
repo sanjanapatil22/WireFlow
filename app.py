@@ -153,7 +153,7 @@ def confirm():
 def finalize():
     try:
         import os
-        output_path = "/Users/sanjanapatil/Documents/sanjana/dad/dad_flask/output.csv"
+        output_path = "output.csv"
 
         # Get form data
         company_name = request.form["company_name"]
@@ -228,7 +228,7 @@ def gantt():
     import pandas as pd
     import os
 
-    csv_path = "/Users/sanjanapatil/Documents/sanjana/dad/dad_flask/output.csv"
+    csv_path = "output.csv"
     
     # Load the CSV
     df = pd.read_csv(csv_path, header=None)
@@ -285,7 +285,7 @@ def gantt():
 @app.route("/save_start_times", methods=["POST", "GET"])
 def save_start_times():
     import pandas as pd
-    csv_path = "/Users/sanjanapatil/Documents/sanjana/dad/dad_flask/output.csv"
+    csv_path = "output.csv"
     df = pd.read_csv(csv_path, header=None)
 
     company_name = request.form.get("company_name") or request.args.get("company_name")
