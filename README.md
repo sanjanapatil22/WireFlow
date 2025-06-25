@@ -18,3 +18,7 @@ This Flask-based web application streamlines the wire manufacturing process by a
 - **Visualization**: Plotly Express
 - **Data Storage**: CSV file ( `used as per project constraints to simulate external data integration without a database.`)
 
+
+### 🎥 Demo Video
+
+[▶️ Click to download or view the video](https://github.com/sanjanapatil22/WireFLow/images/Wire.mov)
