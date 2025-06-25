@@ -21,4 +21,4 @@ This Flask-based web application streamlines the wire manufacturing process by a
 
 ### 🎥 Demo Video
 
-[▶️ Click to download or view the video](https://github.com/sanjanapatil22/WireFLow/images/Wire.mov)
+[▶️ Click to download or view the video](images/Wire.mov)
