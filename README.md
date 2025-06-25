@@ -19,6 +19,11 @@ This Flask-based web application streamlines the wire manufacturing process by a
 - **Data Storage**: CSV file ( `used as per project constraints to simulate external data integration without a database.`)
 
 
-### 🎥 Demo Video
+### 🎥 Demo 
+<p align="center">
+  <img src="images/home.png" alt="home" width="30%" style="margin-right:10px;">
+  <img src="images/order_details.png" alt="Order details" width="30%" style="margin-right:10px;">
+  <img src="images/gantt.png" alt="Gantt Chart" width="30%">
+</p>
 
 [▶️ Click to download or view the video](images/Wire.mov)
