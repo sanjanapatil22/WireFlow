@@ -21,9 +21,9 @@ This Flask-based web application streamlines the wire manufacturing process by a
 
 ### 🎥 Demo 
 <p align="center">
-  <img src="images/home.png" alt="home" width="50%" style="margin-right:10px;">
-  <img src="images/order_details.png" alt="Order details" width="50%" style="margin-right:10px;">
-  <img src="images/gantt.png" alt="Gantt Chart" width="50%">
+  <img src="images/home.png" alt="home" width="70%" style="margin-right:10px;">
+  <img src="images/order_details.png" alt="Order details" width="70%" style="margin-right:10px;">
+  <img src="images/gantt.png" alt="Gantt Chart" width="70%">
 </p>
 
 [▶️ Click to download or view the video](images/Wire.mov)
