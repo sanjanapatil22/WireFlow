@@ -255,6 +255,9 @@ def gantt():
     for _, row in company_data.iterrows():
         company_name = row[0]
         order_date = row[1]
+        length = row[2]
+        n = row[3]
+        m = row[5]
 
         val = row[36]
         if pd.isnull(val) or val == float("inf"):
@@ -271,7 +274,10 @@ def gantt():
             "priority": priority,
             "durations": durations,
             "start_times": starts,
-            "machine_names": machine_names
+            "machine_names": machine_names,
+            "length": length,
+            "n": n,
+            "m": m
         })
 
     return render_template("gantt_input.html", gantt_rows=gantt_rows)
@@ -305,26 +311,26 @@ def save_start_times():
     df.to_csv(csv_path, index=False, header=False)
     return f"✅ Start times updated for <strong>{company_name}</strong>! <a href='/gantt'>Go Back</a>"
 
+
+
 @app.route("/gantt_chart")
 def view_gantt():
     import pandas as pd
     import plotly.express as px
-    from flask import render_template_string
     import plotly
 
-    # Read the CSV
+    # Read and process CSV
     df = pd.read_csv("output.csv", header=None)
-    df = df.iloc[4:].reset_index(drop=True)  # Skip header rows
+    df = df.iloc[4:].reset_index(drop=True)
 
     machine_names = [
-       "RD",  "MD", "FD", "AN", "B50/80", "BU10", "12B", "INS EXT", "ASSLY B1000", "ASSLY 12B", "SHEATH EXT"
+        "RD", "MD", "FD", "AN", "B50/80", "BU10", "12B",
+        "INS EXT", "ASSLY B1000", "ASSLY 12B", "SHEATH EXT"
     ]
-
-    machine_start_cols = list(range(37, 48))  # AL to AV
-    machine_duration_cols = list(range(24, 35))  # Y to AI
+    machine_start_cols = list(range(37, 48))
+    machine_duration_cols = list(range(24, 35))
 
     gantt_data = []
-
     for idx, row in df.iterrows():
         company = row[0]
         for i in range(11):
@@ -335,22 +341,16 @@ def view_gantt():
                 continue
 
             try:
-                # Fix: Convert start time from formats like "23/01/23 12:00"
                 start = pd.to_datetime(start_time_str, dayfirst=True, errors='raise')
-
-                # Fix: Strip and convert string durations to float safely
                 if isinstance(duration_val, str):
                     duration_val = float(duration_val.strip())
-
                 finish = start + pd.to_timedelta(duration_val, unit='h')
-
                 gantt_data.append({
                     "Task": machine_names[i],
                     "Start": start,
                     "Finish": finish,
                     "Company": company
                 })
-
             except Exception as e:
                 print(f"Skipping row {idx}, machine {i} due to error: {e}")
 
@@ -368,8 +368,6 @@ def view_gantt():
         title="📊 Machine Usage Timeline (Gantt Chart)",
         color_discrete_sequence=px.colors.qualitative.Set3
     )
-
-    fig.update_yaxes()
     fig.update_layout(
         xaxis=dict(
             tickformat="%d-%m\n%H:%M",
@@ -385,22 +383,7 @@ def view_gantt():
 
     gantt_html = plotly.io.to_html(fig, full_html=False)
 
-    return render_template_string("""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>📅 Gantt Chart</title>
-        <style>
-            body { font-family: 'Segoe UI', sans-serif; background: #f9fafb; margin: 2rem; }
-            h1 { text-align: center; color: #2c3e50; margin-bottom: 1rem; }
-        </style>
-    </head>
-    <body>
-        <h1>📅 Production Gantt Chart</h1>
-        {{ gantt_html|safe }}
-    </body>
-    </html>
-    """, gantt_html=gantt_html)
+    return render_template("gantt_chart.html", gantt_html=gantt_html)
 
 if __name__ == "__main__":
     app.run(debug=True)
