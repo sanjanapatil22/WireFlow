@@ -10,70 +10,86 @@
         function syncWithPreviousOrder(button) {
             const currentForm = button.closest("form");
             const allEntries = Array.from(document.querySelectorAll("form[action='/save_start_times']"));
-
             const currentIndex = allEntries.indexOf(currentForm);
+
             if (currentIndex <= 0) {
                 alert("❌ No previous order to sync from.");
                 return;
             }
 
             const prevForm = allEntries[currentIndex - 1];
-
             const prevStartInputs = prevForm.querySelectorAll("input[name^='start_']");
-            const currentInputs = currentForm.querySelectorAll("input[name^='start_']");
+            const prevDurationElems = prevForm.querySelectorAll(".duration-value");
+            const durationElems = currentForm.querySelectorAll(".duration-value");
 
-            let prevValid = true;
             const prevTimes = [];
-
-            prevStartInputs.forEach((input) => {
-                if (!input.value) prevValid = false;
-                prevTimes.push(input.value);
-            });
-
-            if (!prevValid) {
-                alert("❌ Previous order doesn't have all timings set.");
-                return;
-            }
-
-            // ✅ Get durations from previous form — not current!
-            const durationElems = prevForm.querySelectorAll(".duration-value");
             const prevDurations = [];
-            durationElems.forEach(el => {
-                const raw = el.innerText.replace("Duration:", "").replace("hr", "").trim();
-                const hrs = parseFloat(raw);
-                prevDurations.push(isNaN(hrs) ? 0 : hrs);
-            });
+            const durations = [];
 
-            // ✅ Now calculate new times correctly
-            const newTimes = [];
             for (let i = 0; i < 11; i++) {
-                const prevRaw = prevTimes[i].replace(/(\d{2})-(\d{2})-(\d{4})/, '$2/$1/$3');
-                const prevStart = new Date(prevRaw);
+                const input = prevStartInputs[i];
+                const prevDuration = parseFloat(prevDurationElems[i].innerText.replace(/[^0-9.]/g, ''));
+                const currentDuration = parseFloat(durationElems[i].innerText.replace(/[^0-9.]/g, ''));
 
-                const durationInSeconds = prevDurations[i] * 3600;
-                const newStart = new Date(prevStart.getTime() + durationInSeconds * 1000);
+                if (!input.value || isNaN(prevDuration) || isNaN(currentDuration)) {
+                    alert(`❌ Missing or invalid data for machine ${i + 1}`);
+                    return;
+                }
 
-                const dd = String(newStart.getDate()).padStart(2, '0');
-                const mm = String(newStart.getMonth() + 1).padStart(2, '0');
-                const yyyy = newStart.getFullYear();
-                const hh = String(newStart.getHours()).padStart(2, '0');
-                const min = String(newStart.getMinutes()).padStart(2, '0');
-                const ss = String(newStart.getSeconds()).padStart(2, '0');
+                const [datePart, timePart] = input.value.split(" ");
+                const [dd, mm, yyyy] = datePart.split("-").map(Number);
+                const [hh, min, ss] = timePart.split(":").map(Number);
 
-                newTimes.push(`${dd}-${mm}-${yyyy} ${hh}:${min}:${ss}`);
+                const prevStart = new Date(yyyy, mm - 1, dd, hh, min, ss);
+
+                prevTimes.push(prevStart);
+                prevDurations.push(prevDuration);
+                durations.push(currentDuration);
             }
 
+            // Step 1: Calculate previous end times
+            const prevEndTimes = prevTimes.map((start, i) => {
+                return new Date(start.getTime() + prevDurations[i] * 3600 * 1000);
+            });
+
+            // Step 2: Calculate current machine start times considering overlap
+            const currentStartTimes = [];
+            for (let i = 0; i < 11; i++) {
+                let startTime;
+
+                if (i === 0) {
+                    startTime = prevEndTimes[0];
+                } else {
+                    const prevEnd = prevEndTimes[i];
+                    const lastMachineEnd = new Date(currentStartTimes[i - 1].getTime() + durations[i - 1] * 3600 * 1000);
+                    startTime = new Date(Math.max(prevEnd.getTime(), lastMachineEnd.getTime()));
+                }
+
+                currentStartTimes.push(startTime);
+            }
+
+            // Step 3: Fill manufacturing date and machine start times
             const manufacturingInput = currentForm.querySelector("input[name='manufacturing_date']");
-            manufacturingInput.value = newTimes[0];
+            manufacturingInput.value = formatDate(currentStartTimes[0]);
 
             const startInputs = currentForm.querySelectorAll("input[name^='start_']");
             startInputs.forEach((input, i) => {
-                input.value = newTimes[i];
+                input.value = formatDate(currentStartTimes[i]);
             });
 
-            alert("✅ Synced timings from previous order.");
+            alert("✅ Synced timings from previous order with correct overlap logic.");
         }
 
+        // Utility
+        function formatDate(dateObj) {
+            const dd = String(dateObj.getDate()).padStart(2, '0');
+            const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const yyyy = dateObj.getFullYear();
+            const hh = String(dateObj.getHours()).padStart(2, '0');
+            const min = String(dateObj.getMinutes()).padStart(2, '0');
+            const ss = String(dateObj.getSeconds()).padStart(2, '0');
+            return `${dd}-${mm}-${yyyy} ${hh}:${min}:${ss}`;
+        }
         function enableEditing(btn) {
             const form = btn.closest("form");
 

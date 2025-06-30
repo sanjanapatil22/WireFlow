@@ -1,0 +1,2 @@
+ssh -i /Users/sanjanapatil/Documents/sanjana/amazon-web-services/sanjana-key.pem ec2-user@16.171.155.107
+
